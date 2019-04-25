@@ -5,6 +5,7 @@ const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const request = require('request');
 const express = require('express');
 const body_parser = require('body-parser');
+const qs = require('querystring');
 
 const app = express().use(body_parser.json());
 
@@ -71,19 +72,61 @@ app.get('/webhook', (req, res) => {
 });
 
 function handleMessage(sender_psid, received_message) {
-  let response;
-  
-  // Checks if the message contains text
-  if (received_message.text) {    
-    // Create the payload for a basic text message, which
-    // will be added to the body of our request to the Send API
-    response = {
-      "text": `You sent the message: "${received_message.text}". Now send me an attachment!`
-    }
+  if (received_message.text) {
+    request.get(`https://api.wit.ai/message?${qs.stringify({q: received_message.text})}`, {
+      'auth': {
+        'bearer': 'CEPHSBBS6PW63FIDRHFX6I2TFQM6NUXO'        // from WIT.AI app
+      }
+    }, (err, res, body) => {
+      if (err) {
+        console.error(err);
+      }
+
+      body = JSON.parse(body);
+
+      if (!body.entities || !body.entities.command || !body.entities.command.length < 0) {
+        callSendAPI(sender_psid, {"text": 'I don\'t understand. Could you repeat?'});
+      } else {
+        const commandEntity = body.entities.command ? body.entities.command[0] : null;
+
+        if (!commandEntity) {
+          callSendAPI(sender_psid, {"text": 'I don\'t understand. Could you repeat?'});
+        }
+
+        switch (commandEntity.value) {
+          case 'create_file':
+            callSendAPI(sender_psid, {"text": 'create_file'});
+            break;
+          case 'remove_file':
+            callSendAPI(sender_psid, {"text": 'remove_file'});
+            break;
+          case 'open_file':
+            callSendAPI(sender_psid, {"text": 'open_file'});
+            break;
+          case 'create_folder':
+            callSendAPI(sender_psid, {"text": 'create_folder'});
+            break;
+          case 'remove_folder':
+            callSendAPI(sender_psid, {"text": 'remove_folder'});
+            break;
+          case 'open_folder':
+            callSendAPI(sender_psid, {"text": 'open_folder'});
+            break;
+          case 'open_webbrowser':
+            callSendAPI(sender_psid, {"text": 'open_webbrowser'});
+            break;
+          case 'back_folder':
+            callSendAPI(sender_psid, {"text": 'back_folder'});
+            break;
+          case 'exit':
+            callSendAPI(sender_psid, {"text": 'exit'});
+            break;
+          default:
+            callSendAPI(sender_psid, {"text": 'I don\'t understand. Could you repeat?'});
+        }
+      }
+    });
   }
-  
-  // Send the response message
-  callSendAPI(sender_psid, response);    
 }
 
 function callSendAPI(sender_psid, response) {
